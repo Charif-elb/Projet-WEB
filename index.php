@@ -16,6 +16,16 @@ require_once 'controllers/usercontroller.php';
 $action = $_GET['action'] ?? 'home';
 $userController = new UserController();
 
+// --- BARRIÈRE DE SÉCURITÉ ---
+// Pages interdites si l'utilisateur n'est pas connecté
+$pages_interdites = ['actu', 'classement'];
+
+if (in_array($action, $pages_interdites) && !isset($_SESSION['user_id'])) {
+    echo "<script>alert('Accès refusé ! Vous devez être connecté pour voir les actualités et le classement.'); window.location.href='index.php';</script>";
+    exit(); // On bloque net l'exécution du script
+}
+// -----------------------------
+
 // --- ACTUALITÉS À LA UNE ---
 $actualites = [
     [
