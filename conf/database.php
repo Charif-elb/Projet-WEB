@@ -1,18 +1,28 @@
 <?php
 class Database {
-    public static function getConnection() {
-        $host = 'localhost';
-        $dbname = 'score_67';
-        $username = 'root';
-        $password = 'root'; // Mot de passe MAMP par défaut
+    private static $instance = null;
 
-        try {
-            $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
-            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            return $pdo;
-        } catch (PDOException $e) {
-            die("Erreur de connexion : " . $e->getMessage());
+    public static function getConnexion() {
+        if (self::$instance === null) {
+            try {
+                // On utilise le vrai nom visible sur ton image
+                $nom_bdd = 'score_67'; 
+                
+                // Configuration standard de MAMP
+                self::$instance = new PDO(
+                    "mysql:host=localhost;dbname=" . $nom_bdd . ";charset=utf8", 
+                    "root", 
+                    "root", 
+                    [
+                        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+                    ]
+                );
+            } catch (Exception $e) {
+                die("Erreur de connexion à la base de données : " . $e->getMessage());
+            }
         }
+        return self::$instance;
     }
 }
 ?>
