@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Actu La Liga</title>
+    <title>Score 67 - Actu Liga</title>
     <style>
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4; }
         
@@ -74,16 +74,19 @@
         @media (max-width: 768px) {
             header { flex-direction: column; text-align: center; padding: 20px; }
             .nav-links { flex-direction: column; gap: 15px; }
-            .auth-btns { flex-direction: column; width: 100%; }
-            .auth-btns button, .auth-btns a { width: 100%; }
+            .auth-btns { flex-direction: column; width: 100%; text-align: center; gap: 10px; }
+            .auth-btns span { margin-right: 0 !important; display: block; margin-bottom: 5px; }
+            .auth-btns button, .auth-btns a { width: 100%; box-sizing: border-box; }
             .container { padding: 20px; }
+            .modal-content { margin: 30% auto; }
         }
     </style>
 </head>
 <body>
 
     <header>
-        <a href="index.php" class="logo">La<span>Liga</span></a>
+        <a href="index.php" class="logo">SCORE <span>67</span></a>
+        
         <div class="nav-links">
             <a href="index.php">Accueil</a>
             <a href="index.php?action=actu">Actualités</a>
