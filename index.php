@@ -70,19 +70,21 @@ switch ($action) {
     // --- SUPPRESSION (Admin ou Auteur) ---
     case 'supprimer':
         $id_to_del = $_GET['id'] ?? '';
+        $retour = $_GET['from'] ?? 'index.php?action=actu';
         // Vérifie si admin OU auteur
         if (isset($posts_perso[$id_to_del]) && ($is_admin || $posts_perso[$id_to_del]['auteur'] === ($_SESSION['user_pseudo'] ?? ''))) {
             unset($posts_perso[$id_to_del]);
             file_put_contents($fichier_posts, json_encode($posts_perso));
-            echo "<script>alert('Article supprimé !'); window.location.href='index.php?action=actu';</script>";
+            echo "<script>alert('Article supprimé !'); window.location.href='$retour';</script>";
         } else {
-            echo "<script>alert('Erreur : vous n\'avez pas la permission de supprimer cet article.'); window.location.href='index.php?action=actu';</script>";
+            echo "<script>alert('Erreur : vous n\'avez pas la permission de supprimer cet article.'); window.location.href='$retour';</script>";
         }
         break;
 
     // --- MODIFIER (Admin ou Auteur) ---
     case 'modifier':
         $id_to_mod = $_GET['id'] ?? '';
+        $retour = $_GET['from'] ?? 'index.php?action=actu';
         if (!isset($posts_perso[$id_to_mod])) { echo "Article introuvable."; break; }
         
         $is_author = ($posts_perso[$id_to_mod]['auteur'] === ($_SESSION['user_pseudo'] ?? ''));
@@ -95,7 +97,7 @@ switch ($action) {
             $posts_perso[$id_to_mod]['image'] = htmlspecialchars($_POST['image']);
             $posts_perso[$id_to_mod]['contenu_complet'] = $_POST['contenu'];
             file_put_contents($fichier_posts, json_encode($posts_perso));
-            echo "<script>alert('Article modifié avec succès !'); window.location.href='index.php?action=actu';</script>";
+            echo "<script>alert('Article modifié avec succès !'); window.location.href='$retour';</script>";
         } else {
             $p = $posts_perso[$id_to_mod];
             echo '<div style="max-width: 600px; margin: 40px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">';
@@ -179,8 +181,8 @@ switch ($action) {
                 // --- BOUTONS ACTIONS (Admin ou Auteur) ---
                 if (strpos($id, 'post_') !== false && ($is_author || $is_admin)) {
                     $pure_id = str_replace('post_', '', $id);
-                    echo ' - <a href="index.php?action=modifier&id=' . $pure_id . '" style="color:blue; text-decoration:none;">Modifier</a>';
-                    echo ' - <a href="index.php?action=supprimer&id=' . $pure_id . '" style="color:red; text-decoration:none;">Supprimer</a>';
+                    echo ' - <a href="index.php?action=modifier&id=' . $pure_id . '&from='.urlencode($_SERVER['REQUEST_URI']).'" style="color:blue; text-decoration:none;">Modifier</a>';
+                    echo ' - <a href="index.php?action=supprimer&id=' . $pure_id . '&from='.urlencode($_SERVER['REQUEST_URI']).'" style="color:red; text-decoration:none;">Supprimer</a>';
                 }
                 echo '  </div>';
                 
@@ -228,8 +230,8 @@ switch ($action) {
             // --- BOUTONS ACTIONS (Admin ou Auteur) ---
             if (strpos($id, 'post_') !== false && ($is_author || $is_admin)) {
                 $pure_id = str_replace('post_', '', $id);
-                echo '<br><a href="index.php?action=modifier&id=' . $pure_id . '" style="color:blue; text-decoration:none; margin-right:5px;">Modifier</a>';
-                echo '<a href="index.php?action=supprimer&id=' . $pure_id . '" style="color:red; text-decoration:none;">Supprimer</a>';
+                echo '<br><a href="index.php?action=modifier&id=' . $pure_id . '&from='.urlencode($_SERVER['REQUEST_URI']).'" style="color:blue; text-decoration:none; margin-right:5px;">Modifier</a>';
+                echo '<a href="index.php?action=supprimer&id=' . $pure_id . '&from='.urlencode($_SERVER['REQUEST_URI']).'" style="color:red; text-decoration:none;">Supprimer</a>';
             }
             echo '  </div>';
             echo '  <div style="padding: 20px; display: flex; flex-direction: column; flex-grow: 1;">';

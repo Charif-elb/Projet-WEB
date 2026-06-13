@@ -39,35 +39,49 @@ class UserController {
             if (!empty($pseudo) && !empty($password)) {
                 $user = $this->userModel->findByPseudo($pseudo);
 
+                // DEBUG : Si ça ne marche pas, décommente la ligne suivante pour voir si $user existe
+                //var_dump($user); exit; 
+
                 if (!$user) {
-                    echo "<script>alert('Pseudo ou mot de passe incorrect.'); window.location.href='index.php';</script>";
+                    echo "<script>alert('Pseudo inconnu.'); window.location.href='index.php';</script>";
                     exit();
                 }
 
-                // DOUBLE VÉRIFICATION : 
-                // 1. Soit le mot de passe est crypté (password_verify)
-                // 2. Soit il est en texte clair dans la BDD ($password === $user['password'])
-                if (password_verify($password, $user['password']) || $password === $user['password']) {
+                // Vérification standard via BCRYPT
+                if (password_verify($password, $user['password'])) {
                     
-                    // Connexion réussie ! On remplit la session avec tes colonnes
+                    // Connexion réussie
                     $_SESSION['user_id'] = $user['id_users']; 
                     $_SESSION['user_pseudo'] = $user['username']; 
                     
-                    // --- AJOUT DE L'ADMIN ---
                     if ($user['username'] === 'charif') {
                         $_SESSION['user_role'] = 'admin';
                     } else {
                         $_SESSION['user_role'] = 'membre';
                     }
-                    // ------------------------
                     
                     header('Location: index.php');
                     exit();
                 } else {
-                    echo "<script>alert('Pseudo ou mot de passe incorrect.'); window.location.href='index.php';</script>";
+                    echo "<script>alert('Mot de passe incorrect.'); window.location.href='index.php';</script>";
                 }
             }
         }
+    }
+    // --- FONCTION POUR FINALISER LA SESSION ---
+    private function finalizeLogin($user) {
+        $_SESSION['user_id'] = $user['id_users']; 
+        $_SESSION['user_pseudo'] = $user['username']; 
+        
+        // --- ADMIN ---
+        if ($user['username'] === 'charif') {
+            $_SESSION['user_role'] = 'admin';
+        } else {
+            $_SESSION['user_role'] = 'membre';
+        }
+        
+        header('Location: index.php');
+        exit();
     }
 
     // --- DÉCONNEXION ---
