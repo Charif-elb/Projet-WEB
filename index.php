@@ -8,9 +8,7 @@ error_reporting(E_ALL);
 date_default_timezone_set('Europe/Paris');
 
 // 3. Sécurité pour la session
-// Ajout de cette ligne pour que la session expire à la fermeture du navigateur
-session_set_cookie_params(0); 
-
+session_set_cookie_params(0);
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -190,6 +188,11 @@ switch ($action) {
                 echo '</div>';
             }
             echo '</div>';
+        }
+        
+        // --- BOUTON PUBLIER (Si connecté) ---
+        if (isset($_SESSION['user_id'])) {
+            echo '<a href="index.php?action=publier" style="position: fixed; bottom: 30px; right: 30px; background-color: #28a745; color: white; padding: 15px 25px; border-radius: 50px; text-decoration: none; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1000;">+ Publier</a>';
         }
         break;
 

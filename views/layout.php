@@ -43,6 +43,9 @@
             transition: color 0.3s ease; 
         }
         .nav-links a:hover { color: #ff0000; }
+        
+        /* --- CLASSE ACTIVE (Pour le rouge permanent) --- */
+        .nav-links a.active { color: #ff0000; }
 
         /* --- BOUTONS À DROITE (Prend 25% et s'aligne à droite) --- */
         .auth-btns { 
@@ -119,9 +122,9 @@
         <a href="index.php" class="logo">SCORE <span>67</span></a>
         
         <div class="nav-links">
-            <a href="index.php">Accueil</a>
-            <a href="index.php?action=actu">Actualités</a>
-            <a href="index.php?action=classement">Classement</a>
+            <a href="index.php" class="<?= ($action === 'home') ? 'active' : '' ?>">Accueil</a>
+            <a href="index.php?action=actu" class="<?= ($action === 'actu') ? 'active' : '' ?>">Actualités</a>
+            <a href="index.php?action=classement" class="<?= ($action === 'classement') ? 'active' : '' ?>">Classement</a>
         </div>
         
         <div class="auth-btns">
