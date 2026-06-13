@@ -87,14 +87,12 @@ switch ($action) {
         break;
 
     default:
-        // --- BANNIÈRE D'ACCUEIL ---
         echo '<div style="text-align: center; margin-bottom: 50px; padding: 40px; background: #1a1a1a; color: #fff; border-radius: 8px;">';
         echo '  <h1 style="margin: 0 0 10px 0;">Bienvenue sur Score 67</h1>';
         echo '  <p style="font-size: 18px; color: #ccc;">L\'actualité brûlante de LALIGA, analysée et décryptée en temps réel.</p>';
         echo '</div>';
 
         echo '<h2 style="margin-bottom: 25px; border-left: 5px solid #e60000; padding-left: 15px;">À la une</h2>';
-        // Grille avec align-items: stretch pour que toutes les cartes prennent la même hauteur
         echo '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 400px)); gap: 30px; justify-content: center; align-items: stretch;">';
         
         $date_post = date('d/m/Y à H:i'); 
@@ -102,7 +100,6 @@ switch ($action) {
         foreach ($actualites as $actu) {
             $auteur_affichage = (isset($_SESSION['user_pseudo']) && $_SESSION['user_pseudo'] === 'charif') ? 'Moi' : 'charif';
             
-            // Flex container : on ajoute height: 100% pour forcer l'étirement
             echo '<div style="background: #fff; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; height: 100%;">';
             echo '  <img src="' . $actu['image'] . '" style="width: 100%; height: 200px; object-fit: cover; display: block;" alt="Image actu">';
             
@@ -110,22 +107,25 @@ switch ($action) {
             echo '      Posté par <strong>' . $auteur_affichage . '</strong> le ' . $date_post;
             echo '  </div>';
             
-            // Contenu : flex-grow: 1 occupe tout l'espace restant
             echo '  <div style="padding: 20px; display: flex; flex-direction: column; flex-grow: 1;">';
             echo '      <h3 style="margin-top: 0; font-size: 18px; color: #1a1a1a;">' . $actu['titre'] . '</h3>';
-            echo '      <p style="color: #555; font-size: 14px; line-height: 1.5; margin-bottom: 20px; flex-grow: 1;">' . $actu['resume'] . '</p>';
-            // Lien : margin-top: auto le pousse tout en bas du bloc flex
-            echo '      <a href="' . $actu['lien'] . '" style="color: #e60000; font-weight: 700; text-decoration: none; font-size: 14px; margin-top: auto;">Lire la suite →</a>';
+            echo '      <p style="color: #555; font-size: 14px; line-height: 1.5; margin-bottom: 0; flex-grow: 1;">' . $actu['resume'] . '</p>';
+            echo '      <a href="' . $actu['lien'] . '" style="color: #e60000; font-weight: 700; text-decoration: none; font-size: 14px; margin-top: 20px; display: block;">Lire la suite →</a>';
             echo '  </div>';
             echo '</div>';
         }
         echo '</div>';
 
-        // --- SECTION BAS DE PAGE ---
         echo '<div style="margin-top: 60px; padding: 30px; border-top: 2px solid #eee; text-align: center;">';
         echo '  <h3 style="color: #333;">Pourquoi nous suivre ?</h3>';
         echo '  <p style="color: #666; max-width: 600px; margin: 0 auto;">Score 67 est la référence pour les amoureux du football espagnol. Profitez d\'analyses exclusives et du suivi de notre classement du championnat espagnol LALIGA en direct.</p>';
         echo '</div>';
+
+        // --- BOUTON FLOTTANT PUBLIER ---
+        echo '<a href="index.php?action=publier" style="position: fixed; bottom: 30px; right: 30px; background-color: #28a745; color: white; padding: 15px 25px; border-radius: 50px; text-decoration: none; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.3); display: flex; align-items: center; z-index: 1000;">';
+        echo '  <span style="margin-right: 8px; font-size: 20px;">+</span> Publier';
+        echo '</a>';
+        
         break;
 }
 
