@@ -21,12 +21,15 @@ $userController = new UserController();
 
 // --- BARRIÈRE DE SÉCURITÉ ---
 $pages_interdites = ['actu', 'classement'];
-
 if (in_array($action, $pages_interdites) && !isset($_SESSION['user_id'])) {
     echo "<script>alert('Accès refusé ! Vous devez être connecté pour voir les actualités et le classement.'); window.location.href='index.php';</script>";
     exit();
 }
-// -----------------------------
+
+// --- CHARGEMENT DES ARTICLES DEPUIS LE FICHIER JSON ---
+$fichier_posts = 'posts.json';
+if (!file_exists($fichier_posts)) { file_put_contents($fichier_posts, json_encode([])); }
+$posts_perso = json_decode(file_get_contents($fichier_posts), true);
 
 // --- BASE DE DONNÉES DES ACTUALITÉS ---
 $actualites = [
@@ -48,56 +51,97 @@ $actualites = [
     ]
 ];
 
+// --- FUSION DES ARTICLES DU JSON AVEC LA LISTE ---
+foreach ($posts_perso as $id => $post) { $actualites['post_' . $id] = $post; }
+
 ob_start();
 
 switch ($action) {
-    case 'register':
-        $userController->register();
+    case 'register': $userController->register(); break;
+    case 'login': $userController->login(); break;
+    case 'logout': $userController->logout(); break;
+
+    // --- SUPPRESSION (Lecture/Écriture JSON) ---
+    case 'supprimer':
+        $id_to_del = $_GET['id'] ?? '';
+        if (isset($posts_perso[$id_to_del]) && $posts_perso[$id_to_del]['auteur'] === ($_SESSION['user_pseudo'] ?? '')) {
+            unset($posts_perso[$id_to_del]);
+            file_put_contents($fichier_posts, json_encode($posts_perso));
+            echo "<script>alert('Article supprimé !'); window.location.href='index.php?action=actu';</script>";
+        } else {
+            echo "<script>alert('Erreur lors de la suppression.'); window.location.href='index.php?action=actu';</script>";
+        }
         break;
 
-    case 'login':
-        $userController->login();
-        break;
-        
-    case 'logout':
-        $userController->logout();
+    // --- PUBLIER (Lecture/Écriture JSON) ---
+    case 'publier':
+        if (!isset($_SESSION['user_id'])) { echo "Accès interdit."; exit; }
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id_unique = time(); 
+            $posts_perso[$id_unique] = [
+                'titre' => htmlspecialchars($_POST['titre']),
+                'resume' => '...',
+                'image' => htmlspecialchars($_POST['image']),
+                'contenu_complet' => $_POST['contenu'],
+                'auteur' => $_SESSION['user_pseudo'] ?? 'Membre'
+            ];
+            file_put_contents($fichier_posts, json_encode($posts_perso));
+            echo "<script>alert('Article publié avec succès !'); window.location.href='index.php?action=actu';</script>";
+        } else {
+            echo '<div style="max-width: 600px; margin: 40px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">';
+            echo '<h2>Publier un article</h2>';
+            echo '<form method="POST" action="index.php?action=publier">';
+            echo '  <input type="text" name="titre" placeholder="Titre de l\'article" style="width:100%; padding:10px; margin-bottom:10px;" required><br>';
+            echo '  <input type="text" name="image" placeholder="Lien de l\'image (URL)" style="width:100%; padding:10px; margin-bottom:10px;" required><br>';
+            echo '  <textarea name="contenu" placeholder="Texte complet..." style="width:100%; height:200px; padding:10px; margin-bottom:10px;" required></textarea><br>';
+            echo '  <button type="submit" style="padding:10px 20px; background:#28a745; color:#fff; border:none; cursor:pointer;">Publier</button>';
+            echo '</form></div>';
+        }
         break;
 
     case 'actu':
-        $id_article = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        $id_article = $_GET['id'] ?? null;
         
-        // 1. Si un ID est passé, on affiche UN article précis
-        if ($id_article > 0 && array_key_exists($id_article, $actualites)) {
+        if ($id_article && array_key_exists($id_article, $actualites)) {
             $article = $actualites[$id_article];
-            $date_post = date('d/m/Y à H:i');
-            $auteur_affichage = (isset($_SESSION['user_pseudo']) && $_SESSION['user_pseudo'] === 'charif') ? 'Moi' : 'charif';
+            
+            // Calcul date et heure
+            if ($id_article == 1) { $date_post = "10/06/2026 à 09:30"; }
+            elseif ($id_article == 2) { $date_post = "11/06/2026 à 14:15"; }
+            else { $date_post = date('d/m/Y à H:i', (int)str_replace('post_', '', $id_article)); }
+            
+            $auteur_affichage = $article['auteur'] ?? 'charif';
+            if (isset($_SESSION['user_pseudo']) && $auteur_affichage === $_SESSION['user_pseudo']) { $auteur_affichage = 'Moi'; }
 
             echo '<div style="max-width: 800px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">';
             echo '  <a href="index.php?action=actu" style="color: #e60000; text-decoration: none; font-weight: bold; display: inline-block; margin-bottom: 20px;">← Retour à la liste</a>';
             echo '  <h2 style="margin-top: 0; font-size: 28px; color: #1a1a1a; margin-bottom: 20px;">' . $article['titre'] . '</h2>';
             echo '  <img src="' . $article['image'] . '" style="width: 100%; max-height: 400px; object-fit: cover; border-radius: 6px; margin-bottom: 5px;" alt="Image">';
-            // Méta donnée ajoutée ici aussi
             echo '  <div style="padding: 10px 0; font-size: 13px; color: #888; margin-bottom: 20px; border-bottom: 1px solid #eee;">Posté par <strong>' . $auteur_affichage . '</strong> le ' . $date_post . '</div>';
             echo '  <div style="font-size: 16px; line-height: 1.8; color: #333;">' . $article['contenu_complet'] . '</div>';
             echo '</div>';
-        } 
-        // 2. Sinon, on affiche TOUS les articles en entier
-        else {
+        } else {
             echo '<h2 style="margin-bottom: 40px; text-align: center;">Toutes les actualités</h2>';
             echo '<div style="max-width: 800px; margin: 0 auto;">';
             
-            $date_post = date('d/m/Y à H:i'); 
-            
             foreach ($actualites as $id => $article) {
-                $auteur_affichage = (isset($_SESSION['user_pseudo']) && $_SESSION['user_pseudo'] === 'charif') ? 'Moi' : 'charif';
+                // Calcul date et heure
+                if ($id == 1) { $date_post = "10/06/2026 à 09:30"; }
+                elseif ($id == 2) { $date_post = "11/06/2026 à 14:15"; }
+                else { $date_post = date('d/m/Y à H:i', (int)str_replace('post_', '', $id)); }
 
+                $auteur_affichage = $article['auteur'] ?? 'charif';
+                if (isset($_SESSION['user_pseudo']) && $auteur_affichage === $_SESSION['user_pseudo']) { $auteur_affichage = 'Moi'; }
                 echo '<div style="margin-bottom: 60px; padding: 30px; background: #fff; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #eee;">';
                 echo '  <h2 style="margin-top: 0; font-size: 28px; color: #1a1a1a; margin-bottom: 20px;">' . $article['titre'] . '</h2>';
                 echo '  <img src="' . $article['image'] . '" style="width: 100%; max-height: 400px; object-fit: cover; border-radius: 6px; margin-bottom: 5px;" alt="Image">';
-                
-                // --- LIGNE AJOUTÉE ICI ---
                 echo '  <div style="padding: 10px 0; font-size: 13px; color: #888; margin-bottom: 20px; border-bottom: 1px solid #eee;">';
                 echo '      Posté par <strong>' . $auteur_affichage . '</strong> le ' . $date_post;
+                
+                // --- BOUTON SUPPRIMER (Si l'utilisateur est l'auteur) ---
+                if (isset($_SESSION['user_pseudo']) && ($article['auteur'] ?? '') === $_SESSION['user_pseudo']) {
+                    echo ' - <a href="index.php?action=supprimer&id=' . str_replace('post_', '', $id) . '" style="color:red; text-decoration:none;">Supprimer</a>';
+                }
                 echo '  </div>';
                 
                 echo '  <div style="font-size: 16px; line-height: 1.8; color: #333;">' . $article['contenu_complet'] . '</div>';
@@ -113,7 +157,6 @@ switch ($action) {
         break;
 
     default:
-        // --- PAGE D'ACCUEIL ---
         echo '<div style="text-align: center; margin-bottom: 50px; padding: 40px; background: #1a1a1a; color: #fff; border-radius: 8px;">';
         echo '  <h1 style="margin: 0 0 10px 0;">Bienvenue sur Score 67</h1>';
         echo '  <p style="font-size: 18px; color: #ccc;">L\'actualité brûlante de LALIGA, analysée et décryptée en temps réel.</p>';
@@ -122,18 +165,19 @@ switch ($action) {
         echo '<h2 style="margin-bottom: 25px; border-left: 5px solid #e60000; padding-left: 15px;">À la une</h2>';
         echo '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 400px)); gap: 30px; justify-content: center; align-items: stretch;">';
         
-        $date_post = date('d/m/Y à H:i'); 
-        
         foreach ($actualites as $id => $actu) {
-            $auteur_affichage = (isset($_SESSION['user_pseudo']) && $_SESSION['user_pseudo'] === 'charif') ? 'Moi' : 'charif';
-            
+            // Calcul date et heure
+            if ($id == 1) { $date_post = "10/06/2026 à 09:30"; }
+            elseif ($id == 2) { $date_post = "11/06/2026 à 14:15"; }
+            else { $date_post = date('d/m/Y à H:i', (int)str_replace('post_', '', $id)); }
+
+            $auteur_affichage = $actu['auteur'] ?? 'charif';
+            if (isset($_SESSION['user_pseudo']) && $auteur_affichage === $_SESSION['user_pseudo']) { $auteur_affichage = 'Moi'; }
             echo '<div style="background: #fff; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; height: 100%;">';
             echo '  <img src="' . $actu['image'] . '" style="width: 100%; height: 200px; object-fit: cover; display: block;" alt="Image actu">';
-            
             echo '  <div style="padding: 10px 20px; font-size: 12px; color: #888; background: #f9f9f9; border-bottom: 1px solid #eee;">';
             echo '      Posté par <strong>' . $auteur_affichage . '</strong> le ' . $date_post;
             echo '  </div>';
-            
             echo '  <div style="padding: 20px; display: flex; flex-direction: column; flex-grow: 1;">';
             echo '      <h3 style="margin-top: 0; font-size: 18px; color: #1a1a1a;">' . $actu['titre'] . '</h3>';
             echo '      <p style="color: #555; font-size: 14px; line-height: 1.5; margin-bottom: 0; flex-grow: 1;">' . $actu['resume'] . '</p>';
@@ -143,20 +187,12 @@ switch ($action) {
         }
         echo '</div>';
 
-        echo '<div style="margin-top: 60px; padding: 30px; border-top: 2px solid #eee; text-align: center;">';
-        echo '  <h3 style="color: #333;">Pourquoi nous suivre ?</h3>';
-        echo '  <p style="color: #666; max-width: 600px; margin: 0 auto;">Score 67 est la référence pour les amoureux du football espagnol. Profitez d\'analyses exclusives et du suivi de notre classement du championnat espagnol LALIGA en direct.</p>';
-        echo '</div>';
-
-        // --- BOUTON FLOTTANT PUBLIER ---
-        echo '<a href="index.php?action=publier" style="position: fixed; bottom: 30px; right: 30px; background-color: #28a745; color: white; padding: 15px 25px; border-radius: 50px; text-decoration: none; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.3); display: flex; align-items: center; z-index: 1000;">';
-        echo '  <span style="margin-right: 8px; font-size: 20px;">+</span> Publier';
-        echo '</a>';
-        
+        if (isset($_SESSION['user_id'])) {
+            echo '<a href="index.php?action=publier" style="position: fixed; bottom: 30px; right: 30px; background-color: #28a745; color: white; padding: 15px 25px; border-radius: 50px; text-decoration: none; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1000;">+ Publier</a>';
+        }
         break;
 }
 
 $content = ob_get_clean();
-
 include __DIR__ . '/views/layout.php';
 ?>
