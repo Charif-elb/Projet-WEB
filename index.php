@@ -241,6 +241,13 @@ switch ($action) {
         }
         echo '</div>';
 
+        // --- NOUVELLE SECTION AJOUTÉE ---
+        echo '<div style="margin-top: 60px; padding: 40px; background: #f9f9f9; border-top: 3px solid #e60000; text-align: center; border-radius: 8px;">';
+        echo '<h3 style="margin-top: 0; color: #1a1a1a; font-size: 22px;">Pourquoi choisir Score 67 pour suivre Laliga ?</h3>';
+        echo '<p style="font-size: 16px; color: #555; max-width: 700px; margin: 0 auto; line-height: 1.6;">Parce qu\'ici, nous ne nous contentons pas des résultats. Retrouvez toute l\'actualité brûlante, les analyses exclusives et le classement complet du championnat mis à jour en direct. Ne manquez rien de l\'élite du football espagnol !</p>';
+        echo '</div>';
+        // --------------------------------
+
         if (isset($_SESSION['user_id'])) {
             echo '<a href="index.php?action=publier" style="position: fixed; bottom: 30px; right: 30px; background-color: #28a745; color: white; padding: 15px 25px; border-radius: 50px; text-decoration: none; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1000;">+ Publier</a>';
         }
