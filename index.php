@@ -8,6 +8,9 @@ error_reporting(E_ALL);
 date_default_timezone_set('Europe/Paris');
 
 // 3. Sécurité pour la session
+// Ajout de cette ligne pour que la session expire à la fermeture du navigateur
+session_set_cookie_params(0); 
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
