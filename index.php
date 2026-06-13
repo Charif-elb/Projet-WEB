@@ -1,10 +1,13 @@
 <?php
-// 1. On garde l'affichage des erreurs activé pour voir le moindre problème
+// 1. On garde l'affichage des erreurs activé
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// 2. Sécurité pour la session
+// 2. Définir le fuseau horaire sur Paris pour la date et l'heure actuelles
+date_default_timezone_set('Europe/Paris');
+
+// 3. Sécurité pour la session
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -17,28 +20,33 @@ $action = $_GET['action'] ?? 'home';
 $userController = new UserController();
 
 // --- BARRIÈRE DE SÉCURITÉ ---
-// Pages interdites si l'utilisateur n'est pas connecté
 $pages_interdites = ['actu', 'classement'];
 
 if (in_array($action, $pages_interdites) && !isset($_SESSION['user_id'])) {
     echo "<script>alert('Accès refusé ! Vous devez être connecté pour voir les actualités et le classement.'); window.location.href='index.php';</script>";
-    exit(); // On bloque net l'exécution du script
+    exit();
 }
 // -----------------------------
 
-// --- ACTUALITÉS À LA UNE ---
+// --- BASE DE DONNÉES DES ACTUALITÉS ---
 $actualites = [
-    [
-        'titre' => 'Le nouveau visage du Real Madrid',
-        'resume' => 'Kylian Mbappé a officiellement rejoint les rangs madrilènes. Une arrivée qui marque un tournant historique pour la Liga.',
+    1 => [
+        'titre' => 'Le cauchemar de Mbappé au Real Madrid',
+        'resume' => 'Rien ne va plus pour l\'attaquant français. Entre prestations fantomatiques et tactique stérile, Kylian Mbappé enchaîne une nouvelle saison blanche historique qui tourne au fiasco total chez les Merengues.',
         'image' => 'images/mbappe.avif',
-        'lien' => 'index.php?action=actu'
+        'lien' => 'index.php?action=actu&id=1',
+        'contenu_complet' => '
+            <p>L\'atterrissage de Kylian Mbappé au Real Madrid vire au drame absolu. Annoncé comme le nouveau Galactique qui devait tout rafler, l\'attaquant français vient de clore une saison 2025-2026 traumatisante, marquée par un <strong>zéro pointé en termes de trophées collectifs</strong>.</p>
+            <p>Pourtant, d\'un point de vue purement statistique, les chiffres ne mentent pas : plus de 40 buts inscrits toutes compétitions confondues. Mais l\'arbre ne cache plus la forêt. L\'élimination humiliante en Coupe du Roi face au modeste club d\'Albacete et la sortie précoce en Ligue des Champions ont rendu ses efforts vains. Pire encore, le vestiaire madrilène s\'est fracturé suite aux tensions publiques concernant son positionnement tactique sous la direction de l\'entraîneur intérimaire Álvaro Arbeloa. Alors que son grand rival, le FC Barcelone, célèbre son sacre en LALIGA et que le PSG continue de briller sur la scène européenne, Mbappé est désormais pointé du doigt par le public du Santiago-Bernabéu.</p>'
     ],
-    [
+    2 => [
         'titre' => 'Lamine Yamal : Le joyau du Barça',
         'resume' => 'Le prodige barcelonais continue d\'impressionner le monde du football et devient le pilier central de l\'attaque catalane.',
         'image' => 'images/yamal.webp',
-        'lien' => 'index.php?action=actu'
+        'lien' => 'index.php?action=actu&id=2',
+        'contenu_complet' => '
+            <p>À seulement 18 ans, Lamine Yamal s\'est imposé comme le maître à jouer absolu du FC Barcelone, menant le club catalan vers les sommets du football espagnol. Deuxième au classement "The Best" de la FIFA, le jeune ailier affole tous les compteurs de précocité.</p>
+            <p>Cependant, tout n\'est pas rose pour le prodige. Victime d\'une <strong>lésion aux ischio-jambiers</strong> lors d\'un match contre le Celta Vigo, Yamal a manqué toute la fin de saison avec le Barça. Alors que le staff médical de Barcelone pousse pour une prudence maximale afin d\'éviter la rechute, la sélection espagnole et Luis de la Fuente font le forcing pour l\'aligner coûte que coûte. Malgré le risque immense d\'aggraver sa blessure, le sélectionneur de la Roja a confirmé qu\'il comptait sur son joyau pour le Mondial.</p>'
     ]
 ];
 
@@ -58,30 +66,65 @@ switch ($action) {
         break;
 
     case 'actu':
-        echo '<h2 style="margin-bottom: 30px;">Toute l\'actualité</h2>';
-        echo '<p>Liste complète des articles...</p>';
+        $id_article = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        if (array_key_exists($id_article, $actualites)) {
+            $article = $actualites[$id_article];
+            echo '<div style="max-width: 800px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">';
+            echo '  <a href="index.php?action=actu" style="color: #e60000; text-decoration: none; font-weight: bold; display: inline-block; margin-bottom: 20px;">← Retour aux actualités</a>';
+            echo '  <h2 style="margin-top: 0; font-size: 28px; color: #1a1a1a; margin-bottom: 20px;">' . $article['titre'] . '</h2>';
+            echo '  <img src="' . $article['image'] . '" style="width: 100%; max-height: 400px; object-fit: cover; border-radius: 6px; margin-bottom: 25px;" alt="Image">';
+            echo '  <div style="font-size: 16px; line-height: 1.8; color: #333;">' . $article['contenu_complet'] . '</div>';
+            echo '</div>';
+        } else {
+            echo '<h2 style="margin-bottom: 30px;">Toute l\'actualité</h2>';
+            echo '<p>Sélectionnez un article depuis l\'accueil pour lire la suite.</p>';
+        }
         break;
 
     case 'classement':
-        echo '<h2 style="margin-bottom: 30px;">Classement La Liga</h2>';
+        echo '<h2 style="margin-bottom: 30px;">Classement LALIGA</h2>';
         echo '<p>Le tableau des scores arrive prochainement.</p>';
         break;
 
     default:
+        // --- BANNIÈRE D'ACCUEIL ---
+        echo '<div style="text-align: center; margin-bottom: 50px; padding: 40px; background: #1a1a1a; color: #fff; border-radius: 8px;">';
+        echo '  <h1 style="margin: 0 0 10px 0;">Bienvenue sur Score 67</h1>';
+        echo '  <p style="font-size: 18px; color: #ccc;">L\'actualité brûlante de LALIGA, analysée et décryptée en temps réel.</p>';
+        echo '</div>';
+
         echo '<h2 style="margin-bottom: 25px; border-left: 5px solid #e60000; padding-left: 15px;">À la une</h2>';
-        echo '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">';
+        // Grille avec align-items: stretch pour que toutes les cartes prennent la même hauteur
+        echo '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 400px)); gap: 30px; justify-content: center; align-items: stretch;">';
+        
+        $date_post = date('d/m/Y à H:i'); 
         
         foreach ($actualites as $actu) {
-            echo '<div style="background: #fff; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">';
+            $auteur_affichage = (isset($_SESSION['user_pseudo']) && $_SESSION['user_pseudo'] === 'charif') ? 'Moi' : 'charif';
+            
+            // Flex container : on ajoute height: 100% pour forcer l'étirement
+            echo '<div style="background: #fff; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; height: 100%;">';
             echo '  <img src="' . $actu['image'] . '" style="width: 100%; height: 200px; object-fit: cover; display: block;" alt="Image actu">';
-            echo '  <div style="padding: 20px;">';
+            
+            echo '  <div style="padding: 10px 20px; font-size: 12px; color: #888; background: #f9f9f9; border-bottom: 1px solid #eee;">';
+            echo '      Posté par <strong>' . $auteur_affichage . '</strong> le ' . $date_post;
+            echo '  </div>';
+            
+            // Contenu : flex-grow: 1 occupe tout l'espace restant
+            echo '  <div style="padding: 20px; display: flex; flex-direction: column; flex-grow: 1;">';
             echo '      <h3 style="margin-top: 0; font-size: 18px; color: #1a1a1a;">' . $actu['titre'] . '</h3>';
-            echo '      <p style="color: #555; font-size: 14px; line-height: 1.5; margin-bottom: 20px;">' . $actu['resume'] . '</p>';
-            echo '      <a href="' . $actu['lien'] . '" style="color: #e60000; font-weight: 700; text-decoration: none; font-size: 14px;">Lire la suite →</a>';
+            echo '      <p style="color: #555; font-size: 14px; line-height: 1.5; margin-bottom: 20px; flex-grow: 1;">' . $actu['resume'] . '</p>';
+            // Lien : margin-top: auto le pousse tout en bas du bloc flex
+            echo '      <a href="' . $actu['lien'] . '" style="color: #e60000; font-weight: 700; text-decoration: none; font-size: 14px; margin-top: auto;">Lire la suite →</a>';
             echo '  </div>';
             echo '</div>';
         }
-        
+        echo '</div>';
+
+        // --- SECTION BAS DE PAGE ---
+        echo '<div style="margin-top: 60px; padding: 30px; border-top: 2px solid #eee; text-align: center;">';
+        echo '  <h3 style="color: #333;">Pourquoi nous suivre ?</h3>';
+        echo '  <p style="color: #666; max-width: 600px; margin: 0 auto;">Score 67 est la référence pour les amoureux du football espagnol. Profitez d\'analyses exclusives et du suivi de notre classement du championnat espagnol LALIGA en direct.</p>';
         echo '</div>';
         break;
 }
