@@ -53,6 +53,14 @@ class UserController {
                     $_SESSION['user_id'] = $user['id_users']; 
                     $_SESSION['user_pseudo'] = $user['username']; 
                     
+                    // --- AJOUT DE L'ADMIN ---
+                    if ($user['username'] === 'charif') {
+                        $_SESSION['user_role'] = 'admin';
+                    } else {
+                        $_SESSION['user_role'] = 'membre';
+                    }
+                    // ------------------------
+                    
                     header('Location: index.php');
                     exit();
                 } else {

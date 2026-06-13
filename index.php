@@ -12,6 +12,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// !!! C'EST ICI QUE LE CODE DÉCIDE SI TU ES ADMIN
+$is_admin = (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin');
+
 require_once 'conf/database.php';
 require_once 'models/user.php';
 require_once 'controllers/usercontroller.php';
@@ -37,6 +40,7 @@ $actualites = [
         'titre' => 'Le cauchemar de Mbappé au Real Madrid',
         'resume' => 'Rien ne va plus pour l\'attaquant français. Entre prestations fantomatiques et tactique stérile, Kylian Mbappé enchaîne une nouvelle saison blanche historique qui tourne au fiasco total chez les Merengues.',
         'image' => 'images/mbappe.avif',
+        'auteur' => 'admin',
         'contenu_complet' => '
             <p>L\'atterrissage de Kylian Mbappé au Real Madrid vire au drame absolu. Annoncé comme le nouveau Galactique qui devait tout rafler, l\'attaquant français vient de clore une saison 2025-2026 traumatisante, marquée par un <strong>zéro pointé en termes de trophées collectifs</strong>.</p>
             <p>Pourtant, d\'un point de vue purement statistique, les chiffres ne mentent pas : plus de 40 buts inscrits toutes compétitions confondues. Mais l\'arbre ne cache plus la forêt. L\'élimination humiliante en Coupe du Roi face au modeste club d\'Albacete et la sortie précoce en Ligue des Champions ont rendu ses efforts vains. Pire encore, le vestiaire madrilène s\'est fracturé suite aux tensions publiques concernant son positionnement tactique sous la direction de l\'entraîneur intérimaire Álvaro Arbeloa. Alors que son grand rival, le FC Barcelone, célèbre son sacre en LALIGA et que le PSG continue de briller sur la scène européenne, Mbappé est désormais pointé du doigt par le public du Santiago-Bernabéu.</p>'
@@ -45,6 +49,7 @@ $actualites = [
         'titre' => 'Lamine Yamal : Le joyau du Barça',
         'resume' => 'Le prodige barcelonais continue d\'impressionner le monde du football et devient le pilier central de l\'attaque catalane.',
         'image' => 'images/yamal.webp',
+        'auteur' => 'admin',
         'contenu_complet' => '
             <p>À seulement 18 ans, Lamine Yamal s\'est imposé comme le maître à jouer absolu du FC Barcelone, menant le club catalan vers les sommets du football espagnol. Deuxième au classement "The Best" de la FIFA, le jeune ailier affole tous les compteurs de précocité.</p>
             <p>Cependant, tout n\'est pas rose pour le prodige. Victime d\'une <strong>lésion aux ischio-jambiers</strong> lors d\'un match contre le Celta Vigo, Yamal a manqué toute la fin de saison avec le Barça. Alors que le staff médical de Barcelone pousse pour une prudence maximale afin d\'éviter la rechute, la sélection espagnole et Luis de la Fuente font le forcing pour l\'aligner coûte que coûte. Malgré le risque immense d\'aggraver sa blessure, le sélectionneur de la Roja a confirmé qu\'il comptait sur son joyau pour le Mondial.</p>'
@@ -61,19 +66,49 @@ switch ($action) {
     case 'login': $userController->login(); break;
     case 'logout': $userController->logout(); break;
 
-    // --- SUPPRESSION (Lecture/Écriture JSON) ---
+    // --- SUPPRESSION (Admin ou Auteur) ---
     case 'supprimer':
         $id_to_del = $_GET['id'] ?? '';
-        if (isset($posts_perso[$id_to_del]) && $posts_perso[$id_to_del]['auteur'] === ($_SESSION['user_pseudo'] ?? '')) {
+        // Vérifie si admin OU auteur
+        if (isset($posts_perso[$id_to_del]) && ($is_admin || $posts_perso[$id_to_del]['auteur'] === ($_SESSION['user_pseudo'] ?? ''))) {
             unset($posts_perso[$id_to_del]);
             file_put_contents($fichier_posts, json_encode($posts_perso));
             echo "<script>alert('Article supprimé !'); window.location.href='index.php?action=actu';</script>";
         } else {
-            echo "<script>alert('Erreur lors de la suppression.'); window.location.href='index.php?action=actu';</script>";
+            echo "<script>alert('Erreur : vous n\'avez pas la permission de supprimer cet article.'); window.location.href='index.php?action=actu';</script>";
         }
         break;
 
-    // --- PUBLIER (Lecture/Écriture JSON) ---
+    // --- MODIFIER (Admin ou Auteur) ---
+    case 'modifier':
+        $id_to_mod = $_GET['id'] ?? '';
+        if (!isset($posts_perso[$id_to_mod])) { echo "Article introuvable."; break; }
+        
+        $is_author = ($posts_perso[$id_to_mod]['auteur'] === ($_SESSION['user_pseudo'] ?? ''));
+
+        // Vérifie si admin OU auteur
+        if (!($is_admin || $is_author)) { echo "Accès interdit."; break; }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $posts_perso[$id_to_mod]['titre'] = htmlspecialchars($_POST['titre']);
+            $posts_perso[$id_to_mod]['image'] = htmlspecialchars($_POST['image']);
+            $posts_perso[$id_to_mod]['contenu_complet'] = $_POST['contenu'];
+            file_put_contents($fichier_posts, json_encode($posts_perso));
+            echo "<script>alert('Article modifié avec succès !'); window.location.href='index.php?action=actu';</script>";
+        } else {
+            $p = $posts_perso[$id_to_mod];
+            echo '<div style="max-width: 600px; margin: 40px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">';
+            echo '<h2>Modifier l\'article</h2>';
+            echo '<form method="POST">';
+            echo '<input type="text" name="titre" value="'.htmlspecialchars($p['titre']).'" style="width:100%; padding:10px; margin-bottom:10px;" required><br>';
+            echo '<input type="text" name="image" value="'.htmlspecialchars($p['image']).'" style="width:100%; padding:10px; margin-bottom:10px;" required><br>';
+            echo '<textarea name="contenu" style="width:100%; height:200px; padding:10px; margin-bottom:10px;">'.$p['contenu_complet'].'</textarea><br>';
+            echo '<button type="submit" style="padding:10px 20px; background:#007bff; color:#fff; border:none; cursor:pointer;">Enregistrer</button>';
+            echo '</form></div>';
+        }
+        break;
+
+    // --- PUBLIER ---
     case 'publier':
         if (!isset($_SESSION['user_id'])) { echo "Accès interdit."; exit; }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -125,22 +160,26 @@ switch ($action) {
             echo '<div style="max-width: 800px; margin: 0 auto;">';
             
             foreach ($actualites as $id => $article) {
-                // Calcul date et heure
                 if ($id == 1) { $date_post = "10/06/2026 à 09:30"; }
                 elseif ($id == 2) { $date_post = "11/06/2026 à 14:15"; }
                 else { $date_post = date('d/m/Y à H:i', (int)str_replace('post_', '', $id)); }
 
                 $auteur_affichage = $article['auteur'] ?? 'charif';
                 if (isset($_SESSION['user_pseudo']) && $auteur_affichage === $_SESSION['user_pseudo']) { $auteur_affichage = 'Moi'; }
+                
+                $is_author = (isset($_SESSION['user_pseudo']) && ($article['auteur'] ?? '') === $_SESSION['user_pseudo']);
+                
                 echo '<div style="margin-bottom: 60px; padding: 30px; background: #fff; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #eee;">';
                 echo '  <h2 style="margin-top: 0; font-size: 28px; color: #1a1a1a; margin-bottom: 20px;">' . $article['titre'] . '</h2>';
                 echo '  <img src="' . $article['image'] . '" style="width: 100%; max-height: 400px; object-fit: cover; border-radius: 6px; margin-bottom: 5px;" alt="Image">';
                 echo '  <div style="padding: 10px 0; font-size: 13px; color: #888; margin-bottom: 20px; border-bottom: 1px solid #eee;">';
                 echo '      Posté par <strong>' . $auteur_affichage . '</strong> le ' . $date_post;
                 
-                // --- BOUTON SUPPRIMER (Si l'utilisateur est l'auteur) ---
-                if (isset($_SESSION['user_pseudo']) && ($article['auteur'] ?? '') === $_SESSION['user_pseudo']) {
-                    echo ' - <a href="index.php?action=supprimer&id=' . str_replace('post_', '', $id) . '" style="color:red; text-decoration:none;">Supprimer</a>';
+                // --- BOUTONS ACTIONS (Admin ou Auteur) ---
+                if (strpos($id, 'post_') !== false && ($is_author || $is_admin)) {
+                    $pure_id = str_replace('post_', '', $id);
+                    echo ' - <a href="index.php?action=modifier&id=' . $pure_id . '" style="color:blue; text-decoration:none;">Modifier</a>';
+                    echo ' - <a href="index.php?action=supprimer&id=' . $pure_id . '" style="color:red; text-decoration:none;">Supprimer</a>';
                 }
                 echo '  </div>';
                 
@@ -166,17 +205,26 @@ switch ($action) {
         echo '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 400px)); gap: 30px; justify-content: center; align-items: stretch;">';
         
         foreach ($actualites as $id => $actu) {
-            // Calcul date et heure
             if ($id == 1) { $date_post = "10/06/2026 à 09:30"; }
             elseif ($id == 2) { $date_post = "11/06/2026 à 14:15"; }
             else { $date_post = date('d/m/Y à H:i', (int)str_replace('post_', '', $id)); }
 
             $auteur_affichage = $actu['auteur'] ?? 'charif';
             if (isset($_SESSION['user_pseudo']) && $auteur_affichage === $_SESSION['user_pseudo']) { $auteur_affichage = 'Moi'; }
+            
+            $is_author = (isset($_SESSION['user_pseudo']) && ($actu['auteur'] ?? '') === $_SESSION['user_pseudo']);
+
             echo '<div style="background: #fff; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; height: 100%;">';
             echo '  <img src="' . $actu['image'] . '" style="width: 100%; height: 200px; object-fit: cover; display: block;" alt="Image actu">';
             echo '  <div style="padding: 10px 20px; font-size: 12px; color: #888; background: #f9f9f9; border-bottom: 1px solid #eee;">';
             echo '      Posté par <strong>' . $auteur_affichage . '</strong> le ' . $date_post;
+            
+            // --- BOUTONS ACTIONS (Admin ou Auteur) ---
+            if (strpos($id, 'post_') !== false && ($is_author || $is_admin)) {
+                $pure_id = str_replace('post_', '', $id);
+                echo '<br><a href="index.php?action=modifier&id=' . $pure_id . '" style="color:blue; text-decoration:none; margin-right:5px;">Modifier</a>';
+                echo '<a href="index.php?action=supprimer&id=' . $pure_id . '" style="color:red; text-decoration:none;">Supprimer</a>';
+            }
             echo '  </div>';
             echo '  <div style="padding: 20px; display: flex; flex-direction: column; flex-grow: 1;">';
             echo '      <h3 style="margin-top: 0; font-size: 18px; color: #1a1a1a;">' . $actu['titre'] . '</h3>';
