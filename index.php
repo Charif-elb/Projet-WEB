@@ -62,61 +62,68 @@ foreach ($posts_perso as $id => $post) { $actualites['post_' . $id] = $post; }
 
 
 // =========================================================================
-// FONCTIONS D'AFFICHAGE ET DE RÉCUPÉRATION DES COMMENTAIRES
+// FONCTIONS D'AFFICHAGE ET DE RÉCUPÉRATION DES COMMENTAIRES (DESIGN AMÉLIORÉ)
 // =========================================================================
 $get_comments = function($id_p) {
     $id_p = str_replace('post_', '', $id_p);
-    
- // On enlève le try/catch pour voir si la requête plante
-$pdo = Database::getConnexion(); // Assure-toi d'avoir corrigé le Database::Database ici
-// Remplace la ligne 73 par celle-ci :
-$stmt = $pdo->prepare("SELECT c.*, u.* FROM comments c JOIN users u ON c.id_user = u.id_users WHERE c.id_post = ? ORDER BY c.id_comments DESC");
-$stmt->execute([$id_p]);
-return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $pdo = Database::getConnexion(); 
+    $stmt = $pdo->prepare("SELECT c.*, u.* FROM comments c JOIN users u ON c.id_user = u.id_users WHERE c.id_post = ? ORDER BY c.id_comments DESC");
+    $stmt->execute([$id_p]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 };
 
 $render_comments_block = function($id_p) use ($get_comments, $is_admin) {
-    $html = '<div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee; text-align: left;">';
-    $html .= '<h4 style="margin: 0 0 15px 0; color: #1a1a1a; font-size: 15px; font-weight: 600;">💬 Échanges et Commentaires</h4>';
+    $html = '<div style="margin-top: 40px; padding: 25px; background: #ffffff; border-radius: 16px; border: 1px solid #eef2f7; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); text-align: left;">';
+    $html .= '<h4 style="margin: 0 0 20px 0; color: #1e293b; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;">💬 Espace Commentaires</h4>';
     
     if (isset($_SESSION['user_id'])) {
         $my_pdp = $_SESSION['profile_pic'] ?? $_SESSION['avatar'] ?? $_SESSION['user_avatar'] ?? $_SESSION['pdp'] ?? 'images/default.png';
         if(empty($my_pdp)) { $my_pdp = 'images/default.png'; }
 
-        $html .= '<form action="index.php?action=add_comment" method="POST" style="margin-bottom: 20px; display: flex; gap: 12px; align-items: flex-start;">';
+        $html .= '<form action="index.php?action=add_comment" method="POST" style="margin-bottom: 30px; display: flex; gap: 15px; align-items: flex-start;">';
         $html .= '<input type="hidden" name="id_post" value="' . $id_p . '">';
-        $html .= '<img src="' . htmlspecialchars($my_pdp) . '" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd;" onerror="this.style.display=\'none\'">';
-        $html .= '<div style="flex: 1; display: flex; flex-direction: column; gap: 5px;">';
-        $html .= '<textarea name="content" placeholder="Ajouter un commentaire..." required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; resize: vertical; height: 42px; font-family: inherit; font-size: 13.5px; box-sizing: border-box;"></textarea>';
-        $html .= '<button type="submit" style="align-self: flex-end; background: #1a1a1a; color: white; padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;">Publier</button>';
+        $html .= '<img src="' . htmlspecialchars($my_pdp) . '" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0; flex-shrink: 0;" onerror="this.style.display=\'none\'">';
+        $html .= '<div style="flex: 1; display: flex; flex-direction: column; gap: 10px;">';
+        $html .= '<textarea name="content" placeholder="Partagez votre avis..." required style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; resize: vertical; height: 80px; font-family: inherit; font-size: 14px; box-sizing: border-box; background: #f8fafc; transition: all 0.2s; outline: none;" onfocus="this.style.borderColor=\'#1a1a1a\'; this.style.background=\'#fff\';" onblur="this.style.borderColor=\'#e2e8f0\'; this.style.background=\'#f8fafc\';"></textarea>';
+        $html .= '<button type="submit" style="align-self: flex-end; background: #1a1a1a; color: white; padding: 8px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: opacity 0.2s;" onmouseover="this.style.opacity=\'0.9\'" onmouseout="this.style.opacity=\'1\'">Publier</button>';
         $html .= '</div>';
         $html .= '</form>';
     } else {
-        $html .= '<p style="font-size: 13px; color: #666; background: #f5f5f5; padding: 10px; border-radius: 6px; margin-bottom: 15px;">🔑 <a href="index.php?action=login" style="color: #e60000; font-weight: bold; text-decoration: none;">Connectez-vous</a> pour laisser un commentaire.</p>';
+        $html .= '<div style="background: #f8fafc; padding: 15px; border-radius: 10px; margin-bottom: 25px; border: 1px solid #e2e8f0; text-align: center;">';
+        $html .= '<p style="margin: 0; font-size: 14px; color: #64748b;">🔑 <a href="index.php?action=login" style="color: #e60000; font-weight: bold; text-decoration: none;">Connectez-vous</a> pour rejoindre la discussion.</p>';
+        $html .= '</div>';
     }
     
     $comments = $get_comments($id_p);
     if (!empty($comments)) {
-        $html .= '<div style="display: flex; flex-direction: column; gap: 12px; max-height: 260px; overflow-y: auto; padding-right: 5px;">';
+        $html .= '<div style="display: flex; flex-direction: column; gap: 20px;">';
         foreach ($comments as $c) {
             $pseudo = $c['user_pseudo'] ?? $c['pseudo'] ?? $c['username'] ?? 'Utilisateur';
+            if (isset($_SESSION['user_id']) && $c['id_user'] == $_SESSION['user_id']) { $pseudo = "Moi"; }
             $pdp = $c['profile_pic'] ?? $c['avatar'] ?? $c['user_avatar'] ?? $c['pdp'] ?? 'images/default.png';
             if (empty($pdp)) { $pdp = 'images/default.png'; }
             
             $date_raw = $c['date_comment'] ?? $c['created_at'] ?? null;
-            $date_formatee = $date_raw ? date('d/m/Y à H:i', strtotime($date_raw)) : date('d/m/Y à H:i');
+            $date_formatee = $date_raw ? date('d/m/Y H:i', strtotime($date_raw)) : date('d/m/Y H:i');
             
-            $html .= '<div style="display: flex; gap: 12px; align-items: flex-start;">';
-            $html .= '   <img src="' . htmlspecialchars($pdp) . '" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1px solid #e2e8f0; background: #f1f5f9;" onerror="this.style.display=\'none\'">';
-            $html .= '   <div style="background: #f8f9fa; padding: 10px 14px; border-radius: 8px; flex: 1; border: 1px solid #f0f0f0;">';
-            $html .= '     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 10px;">';
-            $html .= '        <strong style="color: #1a1a1a; font-size: 13px;">' . htmlspecialchars($pseudo) . '</strong>';
-            $html .= '        <span style="color: #94a3b8; font-size: 11px;">' . $date_formatee . '</span>';
+            $html .= '<div style="display: flex; gap: 15px; align-items: flex-start; padding-bottom: 15px; border-bottom: 1px solid #f1f5f9;">';
+            $html .= '   <img src="' . htmlspecialchars($pdp) . '" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #e2e8f0;" onerror="this.style.display=\'none\'">';
+            $html .= '   <div style="flex: 1;">';
+            $html .= '     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">';
+            $html .= '       <strong style="color: #0f172a; font-size: 14px;">' . htmlspecialchars($pseudo) . '</strong>';
+            $html .= '       <span style="color: #94a3b8; font-size: 11px;">' . $date_formatee . '</span>';
             $html .= '     </div>';
-            $html .= '     <p style="margin: 0; color: #334155; font-size: 13.5px; line-height: 1.4; white-space: pre-line;">' . htmlspecialchars($c['content']) . '</p>';
+            $html .= '     <p style="margin: 0; color: #475569; font-size: 14px; line-height: 1.5; word-break: break-word;">' . htmlspecialchars($c['content']) . '</p>';
+            
+            // --- BOUTON LIKE (METHODE SIMPLE) ---
+            $html .= '<div style="margin-top: 8px;">';
+            $html .= '<a href="index.php?action=like_comment&id=' . $c['id_comments'] . '" style="text-decoration: none; color: #e60000; font-size: 13px; font-weight: 500;">';
+            $html .= '❤️ ' . ($c['likes'] ?? 0);
+            $html .= '</a>';
+            $html .= '</div>';
             
             if ($is_admin || (isset($_SESSION['user_id']) && $c['id_user'] == $_SESSION['user_id'])) {
-                $html .= '<div style="margin-top:5px;"><a href="index.php?action=delete_comment&id=' . $c['id_comments'] . '&from='.urlencode($_SERVER['REQUEST_URI']).'" style="color: #ef4444; font-size: 11px; text-decoration: none;">Supprimer</a></div>';
+                $html .= '<div style="margin-top:8px;"><a href="index.php?action=delete_comment&id=' . $c['id_comments'] . '&from='.urlencode($_SERVER['REQUEST_URI']).'" style="color: #ef4444; font-size: 11px; text-decoration: none; font-weight: 500;">Supprimer</a></div>';
             }
             
             $html .= '   </div>';
@@ -124,7 +131,7 @@ $render_comments_block = function($id_p) use ($get_comments, $is_admin) {
         }
         $html .= '</div>';
     } else {
-        $html .= '<p style="font-size: 13px; color: #94a3b8; font-style: italic; text-align: center; margin: 10px 0;">Aucun commentaire pour le moment.</p>';
+        $html .= '<p style="font-size: 14px; color: #94a3b8; text-align: center; margin: 20px 0; font-style: italic;">Soyez le premier à commenter !</p>';
     }
     
     $html .= '</div>';
@@ -146,6 +153,17 @@ switch ($action) {
     case 'login': $userController->login(); break;
     case 'logout': $userController->logout(); break;
 
+    // --- NOUVELLE ACTION : LIKE ---
+    case 'like_comment':
+        $id_com = (int)($_GET['id'] ?? 0);
+        if ($id_com > 0) {
+            $pdo = Database::getConnexion();
+            $stmt = $pdo->prepare("UPDATE comments SET likes = likes + 1 WHERE id_comments = ?");
+            $stmt->execute([$id_com]);
+        }
+        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php?action=actu'));
+        exit();
+
     case 'add_comment':
         if (!isset($_SESSION['user_id'])) { exit(); }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -156,8 +174,8 @@ switch ($action) {
 
             if (!empty($id_post) && !empty($content_comment)) {
                 try {
-                    $pdo = Database::getConnexion();// Uniformisé
-                    $stmt = $pdo->prepare("INSERT INTO comments (content, id_user, id_post, date_comment) VALUES (?, ?, ?, NOW())");
+                    $pdo = Database::getConnexion();
+                    $stmt = $pdo->prepare("INSERT INTO comments (content, id_user, id_post, date_comment, likes) VALUES (?, ?, ?, NOW(), 0)");
                     $stmt->execute([$content_comment, $id_user, $id_post]);
                 } catch (Throwable $e) {}
             }
@@ -172,7 +190,7 @@ switch ($action) {
         $retour = $_GET['from'] ?? 'index.php?action=actu';
         
         try {
-            $pdo = $pdo = Database::getConnexion(); // Uniformisé
+            $pdo = Database::getConnexion();
             $stmt = $pdo->prepare("SELECT id_user FROM comments WHERE id_comments = ?");
             $stmt->execute([$id_com]);
             $comment = $stmt->fetch();
