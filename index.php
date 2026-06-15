@@ -62,7 +62,7 @@ foreach ($posts_perso as $id => $post) { $actualites['post_' . $id] = $post; }
 
 
 // =========================================================================
-// FONCTIONS D'AFFICHAGE ET DE RÉCUPÉRATION DES COMMENTAIRES (DESIGN AMÉLIORÉ)
+// FONCTIONS D'AFFICHAGE ET DE RÉCUPÉRATION DES COMMENTAIRES
 // =========================================================================
 $get_comments = function($id_p) {
     $id_p = str_replace('post_', '', $id_p);
@@ -73,7 +73,8 @@ $get_comments = function($id_p) {
 };
 
 $render_comments_block = function($id_p) use ($get_comments, $is_admin) {
-    $html = '<div style="margin-top: 40px; padding: 25px; background: #ffffff; border-radius: 16px; border: 1px solid #eef2f7; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); text-align: left;">';
+    // ID UNIQUE POUR CHAQUE BLOC DE COMMENTAIRES
+    $html = '<div id="comments-' . $id_p . '" style="margin-top: 40px; padding: 25px; background: #ffffff; border-radius: 16px; border: 1px solid #eef2f7; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); text-align: left;">';
     $html .= '<h4 style="margin: 0 0 20px 0; color: #1e293b; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;">💬 Espace Commentaires</h4>';
     
     if (isset($_SESSION['user_id'])) {
@@ -115,15 +116,15 @@ $render_comments_block = function($id_p) use ($get_comments, $is_admin) {
             $html .= '     </div>';
             $html .= '     <p style="margin: 0; color: #475569; font-size: 14px; line-height: 1.5; word-break: break-word;">' . htmlspecialchars($c['content']) . '</p>';
             
-            // --- BOUTON LIKE (METHODE SIMPLE) ---
+            // --- BOUTON LIKE ---
             $html .= '<div style="margin-top: 8px;">';
-            $html .= '<a href="index.php?action=like_comment&id=' . $c['id_comments'] . '" style="text-decoration: none; color: #e60000; font-size: 13px; font-weight: 500;">';
+            $html .= '<a href="index.php?action=like_comment&id=' . $c['id_comments'] . '&from='.urlencode($_SERVER['REQUEST_URI']).'&target=comments-' . $id_p . '" style="text-decoration: none; color: #e60000; font-size: 13px; font-weight: 500;">';
             $html .= '❤️ ' . ($c['likes'] ?? 0);
             $html .= '</a>';
             $html .= '</div>';
             
             if ($is_admin || (isset($_SESSION['user_id']) && $c['id_user'] == $_SESSION['user_id'])) {
-                $html .= '<div style="margin-top:8px;"><a href="index.php?action=delete_comment&id=' . $c['id_comments'] . '&from='.urlencode($_SERVER['REQUEST_URI']).'" style="color: #ef4444; font-size: 11px; text-decoration: none; font-weight: 500;">Supprimer</a></div>';
+                $html .= '<div style="margin-top:8px;"><a href="index.php?action=delete_comment&id=' . $c['id_comments'] . '&from='.urlencode($_SERVER['REQUEST_URI']).'&target=comments-' . $id_p . '" style="color: #ef4444; font-size: 11px; text-decoration: none; font-weight: 500;">Supprimer</a></div>';
             }
             
             $html .= '   </div>';
@@ -142,33 +143,29 @@ $render_comments_block = function($id_p) use ($get_comments, $is_admin) {
 
 ob_start();
 
-// --- BARRE DE NAVIGATION ---
-echo '<nav style="background: #fff; padding: 15px; text-align: center; border-bottom: 1px solid #ddd; margin-bottom: 20px;">
-        <a href="index.php" style="margin: 0 15px; color: #333; text-decoration: none; font-weight: bold;">🏠 Accueil</a>
-        <a href="index.php?action=actu" style="margin: 0 15px; color: #e60000; text-decoration: none; font-weight: bold;">📰 Actualités</a>
-      </nav>';
-
 switch ($action) {
     case 'register': $userController->register(); break;
     case 'login': $userController->login(); break;
     case 'logout': $userController->logout(); break;
 
-    // --- NOUVELLE ACTION : LIKE ---
     case 'like_comment':
         $id_com = (int)($_GET['id'] ?? 0);
+        $retour = $_GET['from'] ?? 'index.php?action=actu';
+        $target = $_GET['target'] ?? '';
         if ($id_com > 0) {
             $pdo = Database::getConnexion();
             $stmt = $pdo->prepare("UPDATE comments SET likes = likes + 1 WHERE id_comments = ?");
             $stmt->execute([$id_com]);
         }
-        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php?action=actu'));
+        $final_url = $retour . ($target ? '#' . $target : '');
+        echo "<script>window.location.href='$final_url';</script>";
         exit();
 
     case 'add_comment':
         if (!isset($_SESSION['user_id'])) { exit(); }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id_post = $_POST['id_post'] ?? '';
-            $id_post = str_replace('post_', '', $id_post); 
+            $id_post_clean = str_replace('post_', '', $id_post); 
             $content_comment = htmlspecialchars($_POST['content'] ?? '');
             $id_user = $_SESSION['user_id'];
 
@@ -176,10 +173,11 @@ switch ($action) {
                 try {
                     $pdo = Database::getConnexion();
                     $stmt = $pdo->prepare("INSERT INTO comments (content, id_user, id_post, date_comment, likes) VALUES (?, ?, ?, NOW(), 0)");
-                    $stmt->execute([$content_comment, $id_user, $id_post]);
+                    $stmt->execute([$content_comment, $id_user, $id_post_clean]);
                 } catch (Throwable $e) {}
             }
-            echo "<script>window.location.href='" . ($_SERVER['HTTP_REFERER'] ?? 'index.php?action=actu') . "';</script>";
+            // REDIRECTION AVEC ANCRE
+            echo "<script>window.location.href='" . ($_SERVER['HTTP_REFERER'] ?? 'index.php?action=actu') . "#comments-" . $id_post . "';</script>";
             exit();
         }
         break;
@@ -188,6 +186,7 @@ switch ($action) {
         if (!isset($_SESSION['user_id'])) { exit(); }
         $id_com = $_GET['id'] ?? 0;
         $retour = $_GET['from'] ?? 'index.php?action=actu';
+        $target = $_GET['target'] ?? '';
         
         try {
             $pdo = Database::getConnexion();
@@ -201,13 +200,15 @@ switch ($action) {
             }
         } catch (Throwable $e) {}
         
-        echo "<script>window.location.href='$retour';</script>";
+        $final_url = $retour . ($target ? '#' . $target : '');
+        echo "<script>window.location.href='$final_url';</script>";
         exit();
         break;
 
     case 'supprimer':
         $id_to_del = $_GET['id'] ?? '';
         $retour = $_GET['from'] ?? 'index.php?action=actu';
+        $target = $_GET['target'] ?? '';
         if (isset($posts_perso[$id_to_del]) && ($is_admin || $posts_perso[$id_to_del]['auteur'] === ($_SESSION['user_pseudo'] ?? ''))) {
             unset($posts_perso[$id_to_del]);
             file_put_contents($fichier_posts, json_encode($posts_perso));
