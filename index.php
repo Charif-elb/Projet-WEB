@@ -66,14 +66,13 @@ foreach ($posts_perso as $id => $post) { $actualites['post_' . $id] = $post; }
 // =========================================================================
 $get_comments = function($id_p) {
     $id_p = str_replace('post_', '', $id_p);
-    try {
-        $pdo = Database::getConnection(); // Uniformisé
-        $stmt = $pdo->prepare("SELECT c.*, u.* FROM comments c JOIN users u ON c.id_user = u.user_id WHERE c.id_post = ? ORDER BY c.id_comments DESC");
-        $stmt->execute([$id_p]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Throwable $e) {
-        return [];
-    }
+    
+ // On enlève le try/catch pour voir si la requête plante
+$pdo = Database::getConnexion(); // Assure-toi d'avoir corrigé le Database::Database ici
+// Remplace la ligne 73 par celle-ci :
+$stmt = $pdo->prepare("SELECT c.*, u.* FROM comments c JOIN users u ON c.id_user = u.id_users WHERE c.id_post = ? ORDER BY c.id_comments DESC");
+$stmt->execute([$id_p]);
+return $stmt->fetchAll(PDO::FETCH_ASSOC);
 };
 
 $render_comments_block = function($id_p) use ($get_comments, $is_admin) {
@@ -157,7 +156,7 @@ switch ($action) {
 
             if (!empty($id_post) && !empty($content_comment)) {
                 try {
-                    $pdo = Database::getConnection(); // Uniformisé
+                    $pdo = Database::getConnexion();// Uniformisé
                     $stmt = $pdo->prepare("INSERT INTO comments (content, id_user, id_post, date_comment) VALUES (?, ?, ?, NOW())");
                     $stmt->execute([$content_comment, $id_user, $id_post]);
                 } catch (Throwable $e) {}
@@ -173,7 +172,7 @@ switch ($action) {
         $retour = $_GET['from'] ?? 'index.php?action=actu';
         
         try {
-            $pdo = Database::getConnection(); // Uniformisé
+            $pdo = $pdo = Database::getConnexion(); // Uniformisé
             $stmt = $pdo->prepare("SELECT id_user FROM comments WHERE id_comments = ?");
             $stmt->execute([$id_com]);
             $comment = $stmt->fetch();
