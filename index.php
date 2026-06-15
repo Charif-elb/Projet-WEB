@@ -199,8 +199,7 @@ switch ($action) {
         break;
 
     case 'classement':
-        echo '<h2 style="margin-bottom: 30px;">Classement LALIGA</h2>';
-        echo '<p>Le tableau des scores arrive prochainement.</p>';
+        include 'views/classement.php';
         break;
 
     default:

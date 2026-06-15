@@ -28,8 +28,8 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    // Utilisation de fetch pour interroger l'API locale
-    fetch('api/classement.json')
+    // Utilisation de fetch pour interroger le fichier JSON avec le chemin explicite
+    fetch('./la_liga.json')
         .then(response => {
             if (!response.ok) {
                 throw new Error("Fichier de classement introuvable.");
@@ -56,10 +56,22 @@ document.addEventListener("DOMContentLoaded", function() {
                     if (teamData.goalDifference > 0) { diffColor = '#28a745'; diffPrefix = '+'; }
                     else if (teamData.goalDifference < 0) { diffColor = '#dc3545'; }
 
+                    // --- AJOUT : Correction manuelle pour les logos manquants avec les bonnes extensions ---
+                    let teamLogo = teamData.teamImageUrl;
+                    const teamNameLower = teamData.team ? teamData.team.toLowerCase() : '';
+
+                    if (teamData.position == 12 || teamNameLower.includes('athletic')) {
+                        teamLogo = 'images/athleticc.png';
+                    } else if (teamData.position == 19 || teamNameLower.includes('girona')) {
+                        teamLogo = 'images/girona.webp';
+                    } else if (teamData.position == 20 || teamNameLower.includes('oviedo')) {
+                        teamLogo = 'images/oviedoo.png';
+                    }
+
                     tr.innerHTML = `
                         <td style="padding: 14px 12px; font-weight: bold; color: #555;">${teamData.position}</td>
                         <td style="padding: 14px 12px; display: flex; align-items: center; gap: 12px; font-weight: 600;">
-                            <img src="${teamData.teamImageUrl}" alt="${teamData.team}" style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
+                            <img src="${teamLogo}" alt="${teamData.team}" style="width: 24px; height: 24px; object-fit: contain;" onerror="this.style.display='none'">
                             <span>${teamData.team}</span>
                         </td>
                         <td style="padding: 14px 12px; text-align: center; color: #555;">${teamData.played}</td>

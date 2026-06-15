@@ -40,7 +40,7 @@ class UserController {
                 $user = $this->userModel->findByPseudo($pseudo);
 
                 // DEBUG : Si ça ne marche pas, décommente la ligne suivante pour voir si $user existe
-                //var_dump($user); exit; 
+                // var_dump($user); exit; 
 
                 if (!$user) {
                     echo "<script>alert('Pseudo inconnu.'); window.location.href='index.php';</script>";
