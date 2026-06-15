@@ -53,25 +53,144 @@ $actualites = [
         'auteur' => 'admin',
         'contenu_complet' => '
             <p>À seulement 18 ans, Lamine Yamal s\'est imposé comme le maître à jouer absolu du FC Barcelone, menant le club catalan vers les sommets du football espagnol. Deuxième au classement "The Best" de la FIFA, le jeune ailier affole tous les compteurs de précocité.</p>
-            <p>Cependant, tout n\'est pas rose pour le prodige. Victime d\'une <strong>lésion aux ischio-jambiers</strong> lors d\'un match contre le Celta Vigo, Yamal a manqué toute la fin de saison avec le Barça. Alors que le staff médical de Barcelone pousse pour une prudence maximale afin d\'éviter la rechute, la sélection espagnole et Luis de la Fuente font le forcing pour l\'aligner coûte que coûte. Malgré le risque immense d\'aggraver sa blessure, le sélectionneur de la Roja a confirmé qu\'il comptait sur son joyau pour le Mondial.</p>'
+            <p>Cependant, tout n\'est pas rose pour le prodige. Victime d\'une <strong>lésion aux ischio-jambiers</strong> lors d\'un match contre le Celta Vigo, Yamal a manqué toute la fin de saison avec le Barça. Alors que le staff médical de Barcelone pousse pour une prudence maximale afin d\'éviter la rechute, la sélection espagnole et Luis de la Fuente font le forcing pour l\'aligner coûte que coûte. Malgré le risque immense d\'aggraver sa biomécanique et sa blessure, le sélectionneur de la Roja a confirmé qu\'il comptait sur son joyau pour le Mondial.</p>'
     ]
 ];
 
 // --- FUSION DES ARTICLES DU JSON AVEC LA LISTE ---
 foreach ($posts_perso as $id => $post) { $actualites['post_' . $id] = $post; }
 
+
+// =========================================================================
+// FONCTIONS D'AFFICHAGE ET DE RÉCUPÉRATION DES COMMENTAIRES
+// =========================================================================
+$get_comments = function($id_p) {
+    $id_p = str_replace('post_', '', $id_p);
+    try {
+        $pdo = Database::getConnection(); // Uniformisé
+        $stmt = $pdo->prepare("SELECT c.*, u.* FROM comments c JOIN users u ON c.id_user = u.user_id WHERE c.id_post = ? ORDER BY c.id_comments DESC");
+        $stmt->execute([$id_p]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return [];
+    }
+};
+
+$render_comments_block = function($id_p) use ($get_comments, $is_admin) {
+    $html = '<div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee; text-align: left;">';
+    $html .= '<h4 style="margin: 0 0 15px 0; color: #1a1a1a; font-size: 15px; font-weight: 600;">💬 Échanges et Commentaires</h4>';
+    
+    if (isset($_SESSION['user_id'])) {
+        $my_pdp = $_SESSION['profile_pic'] ?? $_SESSION['avatar'] ?? $_SESSION['user_avatar'] ?? $_SESSION['pdp'] ?? 'images/default.png';
+        if(empty($my_pdp)) { $my_pdp = 'images/default.png'; }
+
+        $html .= '<form action="index.php?action=add_comment" method="POST" style="margin-bottom: 20px; display: flex; gap: 12px; align-items: flex-start;">';
+        $html .= '<input type="hidden" name="id_post" value="' . $id_p . '">';
+        $html .= '<img src="' . htmlspecialchars($my_pdp) . '" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd;" onerror="this.style.display=\'none\'">';
+        $html .= '<div style="flex: 1; display: flex; flex-direction: column; gap: 5px;">';
+        $html .= '<textarea name="content" placeholder="Ajouter un commentaire..." required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; resize: vertical; height: 42px; font-family: inherit; font-size: 13.5px; box-sizing: border-box;"></textarea>';
+        $html .= '<button type="submit" style="align-self: flex-end; background: #1a1a1a; color: white; padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;">Publier</button>';
+        $html .= '</div>';
+        $html .= '</form>';
+    } else {
+        $html .= '<p style="font-size: 13px; color: #666; background: #f5f5f5; padding: 10px; border-radius: 6px; margin-bottom: 15px;">🔑 <a href="index.php?action=login" style="color: #e60000; font-weight: bold; text-decoration: none;">Connectez-vous</a> pour laisser un commentaire.</p>';
+    }
+    
+    $comments = $get_comments($id_p);
+    if (!empty($comments)) {
+        $html .= '<div style="display: flex; flex-direction: column; gap: 12px; max-height: 260px; overflow-y: auto; padding-right: 5px;">';
+        foreach ($comments as $c) {
+            $pseudo = $c['user_pseudo'] ?? $c['pseudo'] ?? $c['username'] ?? 'Utilisateur';
+            $pdp = $c['profile_pic'] ?? $c['avatar'] ?? $c['user_avatar'] ?? $c['pdp'] ?? 'images/default.png';
+            if (empty($pdp)) { $pdp = 'images/default.png'; }
+            
+            $date_raw = $c['date_comment'] ?? $c['created_at'] ?? null;
+            $date_formatee = $date_raw ? date('d/m/Y à H:i', strtotime($date_raw)) : date('d/m/Y à H:i');
+            
+            $html .= '<div style="display: flex; gap: 12px; align-items: flex-start;">';
+            $html .= '   <img src="' . htmlspecialchars($pdp) . '" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1px solid #e2e8f0; background: #f1f5f9;" onerror="this.style.display=\'none\'">';
+            $html .= '   <div style="background: #f8f9fa; padding: 10px 14px; border-radius: 8px; flex: 1; border: 1px solid #f0f0f0;">';
+            $html .= '     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 10px;">';
+            $html .= '        <strong style="color: #1a1a1a; font-size: 13px;">' . htmlspecialchars($pseudo) . '</strong>';
+            $html .= '        <span style="color: #94a3b8; font-size: 11px;">' . $date_formatee . '</span>';
+            $html .= '     </div>';
+            $html .= '     <p style="margin: 0; color: #334155; font-size: 13.5px; line-height: 1.4; white-space: pre-line;">' . htmlspecialchars($c['content']) . '</p>';
+            
+            if ($is_admin || (isset($_SESSION['user_id']) && $c['id_user'] == $_SESSION['user_id'])) {
+                $html .= '<div style="margin-top:5px;"><a href="index.php?action=delete_comment&id=' . $c['id_comments'] . '&from='.urlencode($_SERVER['REQUEST_URI']).'" style="color: #ef4444; font-size: 11px; text-decoration: none;">Supprimer</a></div>';
+            }
+            
+            $html .= '   </div>';
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+    } else {
+        $html .= '<p style="font-size: 13px; color: #94a3b8; font-style: italic; text-align: center; margin: 10px 0;">Aucun commentaire pour le moment.</p>';
+    }
+    
+    $html .= '</div>';
+    return $html;
+};
+// =========================================================================
+
+
 ob_start();
+
+// --- BARRE DE NAVIGATION ---
+echo '<nav style="background: #fff; padding: 15px; text-align: center; border-bottom: 1px solid #ddd; margin-bottom: 20px;">
+        <a href="index.php" style="margin: 0 15px; color: #333; text-decoration: none; font-weight: bold;">🏠 Accueil</a>
+        <a href="index.php?action=actu" style="margin: 0 15px; color: #e60000; text-decoration: none; font-weight: bold;">📰 Actualités</a>
+      </nav>';
 
 switch ($action) {
     case 'register': $userController->register(); break;
     case 'login': $userController->login(); break;
     case 'logout': $userController->logout(); break;
 
-    // --- SUPPRESSION (Admin ou Auteur) ---
+    case 'add_comment':
+        if (!isset($_SESSION['user_id'])) { exit(); }
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id_post = $_POST['id_post'] ?? '';
+            $id_post = str_replace('post_', '', $id_post); 
+            $content_comment = htmlspecialchars($_POST['content'] ?? '');
+            $id_user = $_SESSION['user_id'];
+
+            if (!empty($id_post) && !empty($content_comment)) {
+                try {
+                    $pdo = Database::getConnection(); // Uniformisé
+                    $stmt = $pdo->prepare("INSERT INTO comments (content, id_user, id_post, date_comment) VALUES (?, ?, ?, NOW())");
+                    $stmt->execute([$content_comment, $id_user, $id_post]);
+                } catch (Throwable $e) {}
+            }
+            echo "<script>window.location.href='" . ($_SERVER['HTTP_REFERER'] ?? 'index.php?action=actu') . "';</script>";
+            exit();
+        }
+        break;
+
+    case 'delete_comment':
+        if (!isset($_SESSION['user_id'])) { exit(); }
+        $id_com = $_GET['id'] ?? 0;
+        $retour = $_GET['from'] ?? 'index.php?action=actu';
+        
+        try {
+            $pdo = Database::getConnection(); // Uniformisé
+            $stmt = $pdo->prepare("SELECT id_user FROM comments WHERE id_comments = ?");
+            $stmt->execute([$id_com]);
+            $comment = $stmt->fetch();
+            
+            if ($comment && ($is_admin || $comment['id_user'] == $_SESSION['user_id'])) {
+                $stmt = $pdo->prepare("DELETE FROM comments WHERE id_comments = ?");
+                $stmt->execute([$id_com]);
+            }
+        } catch (Throwable $e) {}
+        
+        echo "<script>window.location.href='$retour';</script>";
+        exit();
+        break;
+
     case 'supprimer':
         $id_to_del = $_GET['id'] ?? '';
         $retour = $_GET['from'] ?? 'index.php?action=actu';
-        // Vérifie si admin OU auteur
         if (isset($posts_perso[$id_to_del]) && ($is_admin || $posts_perso[$id_to_del]['auteur'] === ($_SESSION['user_pseudo'] ?? ''))) {
             unset($posts_perso[$id_to_del]);
             file_put_contents($fichier_posts, json_encode($posts_perso));
@@ -81,7 +200,6 @@ switch ($action) {
         }
         break;
 
-    // --- MODIFIER (Admin ou Auteur) ---
     case 'modifier':
         $id_to_mod = $_GET['id'] ?? '';
         $retour = $_GET['from'] ?? 'index.php?action=actu';
@@ -89,7 +207,6 @@ switch ($action) {
         
         $is_author = ($posts_perso[$id_to_mod]['auteur'] === ($_SESSION['user_pseudo'] ?? ''));
 
-        // Vérifie si admin OU auteur
         if (!($is_admin || $is_author)) { echo "Accès interdit."; break; }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -111,7 +228,6 @@ switch ($action) {
         }
         break;
 
-    // --- PUBLIER ---
     case 'publier':
         if (!isset($_SESSION['user_id'])) { echo "Accès interdit."; exit; }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -129,10 +245,10 @@ switch ($action) {
             echo '<div style="max-width: 600px; margin: 40px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">';
             echo '<h2>Publier un article</h2>';
             echo '<form method="POST" action="index.php?action=publier">';
-            echo '  <input type="text" name="titre" placeholder="Titre de l\'article" style="width:100%; padding:10px; margin-bottom:10px;" required><br>';
-            echo '  <input type="text" name="image" placeholder="Lien de l\'image (URL)" style="width:100%; padding:10px; margin-bottom:10px;" required><br>';
-            echo '  <textarea name="contenu" placeholder="Texte complet..." style="width:100%; height:200px; padding:10px; margin-bottom:10px;" required></textarea><br>';
-            echo '  <button type="submit" style="padding:10px 20px; background:#28a745; color:#fff; border:none; cursor:pointer;">Publier</button>';
+            echo '   <input type="text" name="titre" placeholder="Titre de l\'article" style="width:100%; padding:10px; margin-bottom:10px;" required><br>';
+            echo '   <input type="text" name="image" placeholder="Lien de l\'image (URL)" style="width:100%; padding:10px; margin-bottom:10px;" required><br>';
+            echo '   <textarea name="contenu" placeholder="Texte complet..." style="width:100%; height:200px; padding:10px; margin-bottom:10px;" required></textarea><br>';
+            echo '   <button type="submit" style="padding:10px 20px; background:#28a745; color:#fff; border:none; cursor:pointer;">Publier</button>';
             echo '</form></div>';
         }
         break;
@@ -143,7 +259,6 @@ switch ($action) {
         if ($id_article && array_key_exists($id_article, $actualites)) {
             $article = $actualites[$id_article];
             
-            // Calcul date et heure
             if ($id_article == 1) { $date_post = "10/06/2026 à 09:30"; }
             elseif ($id_article == 2) { $date_post = "11/06/2026 à 14:15"; }
             else { $date_post = date('d/m/Y à H:i', (int)str_replace('post_', '', $id_article)); }
@@ -152,11 +267,14 @@ switch ($action) {
             if (isset($_SESSION['user_pseudo']) && $auteur_affichage === $_SESSION['user_pseudo']) { $auteur_affichage = 'Moi'; }
 
             echo '<div style="max-width: 800px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">';
-            echo '  <a href="index.php?action=actu" style="color: #e60000; text-decoration: none; font-weight: bold; display: inline-block; margin-bottom: 20px;">← Retour à la liste</a>';
-            echo '  <h2 style="margin-top: 0; font-size: 28px; color: #1a1a1a; margin-bottom: 20px;">' . $article['titre'] . '</h2>';
-            echo '  <img src="' . $article['image'] . '" style="width: 100%; max-height: 400px; object-fit: cover; border-radius: 6px; margin-bottom: 5px;" alt="Image">';
-            echo '  <div style="padding: 10px 0; font-size: 13px; color: #888; margin-bottom: 20px; border-bottom: 1px solid #eee;">Posté par <strong>' . $auteur_affichage . '</strong> le ' . $date_post . '</div>';
-            echo '  <div style="font-size: 16px; line-height: 1.8; color: #333;">' . $article['contenu_complet'] . '</div>';
+            echo '   <a href="index.php?action=actu" style="color: #e60000; text-decoration: none; font-weight: bold; display: inline-block; margin-bottom: 20px;">← Retour à la liste</a>';
+            echo '   <h2 style="margin-top: 0; font-size: 28px; color: #1a1a1a; margin-bottom: 20px;">' . $article['titre'] . '</h2>';
+            echo '   <img src="' . $article['image'] . '" style="width: 100%; max-height: 400px; object-fit: cover; border-radius: 6px; margin-bottom: 5px;" alt="Image">';
+            echo '   <div style="padding: 10px 0; font-size: 13px; color: #888; margin-bottom: 20px; border-bottom: 1px solid #eee;">Posté par <strong>' . $auteur_affichage . '</strong> le ' . $date_post . '</div>';
+            echo '   <div style="font-size: 16px; line-height: 1.8; color: #333;">' . $article['contenu_complet'] . '</div>';
+            
+            echo $render_comments_block($id_article);
+            
             echo '</div>';
         } else {
             echo '<h2 style="margin-bottom: 40px; text-align: center;">Toutes les actualités</h2>';
@@ -173,26 +291,27 @@ switch ($action) {
                 $is_author = (isset($_SESSION['user_pseudo']) && ($article['auteur'] ?? '') === $_SESSION['user_pseudo']);
                 
                 echo '<div style="margin-bottom: 60px; padding: 30px; background: #fff; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #eee;">';
-                echo '  <h2 style="margin-top: 0; font-size: 28px; color: #1a1a1a; margin-bottom: 20px;">' . $article['titre'] . '</h2>';
-                echo '  <img src="' . $article['image'] . '" style="width: 100%; max-height: 400px; object-fit: cover; border-radius: 6px; margin-bottom: 5px;" alt="Image">';
-                echo '  <div style="padding: 10px 0; font-size: 13px; color: #888; margin-bottom: 20px; border-bottom: 1px solid #eee;">';
+                echo '   <h2 style="margin-top: 0; font-size: 28px; color: #1a1a1a; margin-bottom: 20px;">' . $article['titre'] . '</h2>';
+                echo '   <img src="' . $article['image'] . '" style="width: 100%; max-height: 400px; object-fit: cover; border-radius: 6px; margin-bottom: 5px;" alt="Image">';
+                echo '   <div style="padding: 10px 0; font-size: 13px; color: #888; margin-bottom: 20px; border-bottom: 1px solid #eee;">';
                 echo '      Posté par <strong>' . $auteur_affichage . '</strong> le ' . $date_post;
                 
-                // --- BOUTONS ACTIONS (Admin ou Auteur) ---
                 if (strpos($id, 'post_') !== false && ($is_author || $is_admin)) {
                     $pure_id = str_replace('post_', '', $id);
                     echo ' - <a href="index.php?action=modifier&id=' . $pure_id . '&from='.urlencode($_SERVER['REQUEST_URI']).'" style="color:blue; text-decoration:none;">Modifier</a>';
                     echo ' - <a href="index.php?action=supprimer&id=' . $pure_id . '&from='.urlencode($_SERVER['REQUEST_URI']).'" style="color:red; text-decoration:none;">Supprimer</a>';
                 }
-                echo '  </div>';
+                echo '   </div>';
                 
-                echo '  <div style="font-size: 16px; line-height: 1.8; color: #333;">' . $article['contenu_complet'] . '</div>';
+                echo '   <div style="font-size: 16px; line-height: 1.8; color: #333;">' . $article['contenu_complet'] . '</div>';
+                
+                echo $render_comments_block($id);
+                
                 echo '</div>';
             }
             echo '</div>';
         }
         
-        // --- BOUTON PUBLIER (Si connecté) ---
         if (isset($_SESSION['user_id'])) {
             echo '<a href="index.php?action=publier" style="position: fixed; bottom: 30px; right: 30px; background-color: #28a745; color: white; padding: 15px 25px; border-radius: 50px; text-decoration: none; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1000;">+ Publier</a>';
         }
@@ -204,8 +323,8 @@ switch ($action) {
 
     default:
         echo '<div style="text-align: center; margin-bottom: 50px; padding: 40px; background: #1a1a1a; color: #fff; border-radius: 8px;">';
-        echo '  <h1 style="margin: 0 0 10px 0;">Bienvenue sur Score 67</h1>';
-        echo '  <p style="font-size: 18px; color: #ccc;">L\'actualité brûlante de LALIGA, analysée et décryptée en temps réel.</p>';
+        echo '   <h1 style="margin: 0 0 10px 0;">Bienvenue sur Score 67</h1>';
+        echo '   <p style="font-size: 18px; color: #ccc;">L\'actualité brûlante de LALIGA, analysée et décryptée en temps réel.</p>';
         echo '</div>';
 
         echo '<h2 style="margin-bottom: 25px; border-left: 5px solid #e60000; padding-left: 15px;">À la une</h2>';
@@ -222,32 +341,29 @@ switch ($action) {
             $is_author = (isset($_SESSION['user_pseudo']) && ($actu['auteur'] ?? '') === $_SESSION['user_pseudo']);
 
             echo '<div style="background: #fff; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; height: 100%;">';
-            echo '  <img src="' . $actu['image'] . '" style="width: 100%; height: 200px; object-fit: cover; display: block;" alt="Image actu">';
-            echo '  <div style="padding: 10px 20px; font-size: 12px; color: #888; background: #f9f9f9; border-bottom: 1px solid #eee;">';
+            echo '   <img src="' . $actu['image'] . '" style="width: 100%; height: 200px; object-fit: cover; display: block;" alt="Image actu">';
+            echo '   <div style="padding: 10px 20px; font-size: 12px; color: #888; background: #f9f9f9; border-bottom: 1px solid #eee;">';
             echo '      Posté par <strong>' . $auteur_affichage . '</strong> le ' . $date_post;
             
-            // --- BOUTONS ACTIONS (Admin ou Auteur) ---
             if (strpos($id, 'post_') !== false && ($is_author || $is_admin)) {
                 $pure_id = str_replace('post_', '', $id);
                 echo '<br><a href="index.php?action=modifier&id=' . $pure_id . '&from='.urlencode($_SERVER['REQUEST_URI']).'" style="color:blue; text-decoration:none; margin-right:5px;">Modifier</a>';
                 echo '<a href="index.php?action=supprimer&id=' . $pure_id . '&from='.urlencode($_SERVER['REQUEST_URI']).'" style="color:red; text-decoration:none;">Supprimer</a>';
             }
-            echo '  </div>';
-            echo '  <div style="padding: 20px; display: flex; flex-direction: column; flex-grow: 1;">';
+            echo '   </div>';
+            echo '   <div style="padding: 20px; display: flex; flex-direction: column; flex-grow: 1;">';
             echo '      <h3 style="margin-top: 0; font-size: 18px; color: #1a1a1a;">' . $actu['titre'] . '</h3>';
             echo '      <p style="color: #555; font-size: 14px; line-height: 1.5; margin-bottom: 0; flex-grow: 1;">' . $actu['resume'] . '</p>';
             echo '      <a href="index.php?action=actu&id=' . $id . '" style="color: #e60000; font-weight: 700; text-decoration: none; font-size: 14px; margin-top: 20px; display: block;">Lire la suite →</a>';
-            echo '  </div>';
+            echo '   </div>';
             echo '</div>';
         }
         echo '</div>';
 
-        // --- NOUVELLE SECTION AJOUTÉE ---
         echo '<div style="margin-top: 60px; padding: 40px; background: #f9f9f9; border-top: 3px solid #e60000; text-align: center; border-radius: 8px;">';
         echo '<h3 style="margin-top: 0; color: #1a1a1a; font-size: 22px;">Pourquoi choisir Score 67 pour suivre Laliga ?</h3>';
         echo '<p style="font-size: 16px; color: #555; max-width: 700px; margin: 0 auto; line-height: 1.6;">Parce qu\'ici, nous ne nous contentons pas des résultats. Retrouvez toute l\'actualité brûlante, les analyses exclusives et le classement complet du championnat mis à jour en direct. Ne manquez rien de l\'élite du football espagnol !</p>';
         echo '</div>';
-        // --------------------------------
 
         if (isset($_SESSION['user_id'])) {
             echo '<a href="index.php?action=publier" style="position: fixed; bottom: 30px; right: 30px; background-color: #28a745; color: white; padding: 15px 25px; border-radius: 50px; text-decoration: none; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 1000;">+ Publier</a>';
